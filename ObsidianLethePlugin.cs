@@ -7,7 +7,7 @@ using System.Reflection;
 namespace ObsidianToolset
 {
 
-    public sealed class ObsidianLethePlugin : IToolPluginEntry
+    public sealed class ObsidianLethePlugin : IPluginEntry
     {
         public static ObsidianSettings Settings { get; private set; } = new();
 
