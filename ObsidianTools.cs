@@ -13,6 +13,9 @@ namespace ObsidianToolset
     internal class ObsidianReadTools : IToolList
     {
         public string Id => "ObsidianRead";
+        public string Description => "A set of tools for reading and searching notes in an Obsidian vault. These tools allow the bot to explore the structure of the vault, read note contents, and discover connections between notes.";
+        public string SystemPromptInstruction => string.Empty;
+
         private List<Tool> toolList = [];
 
         private string _vaultRoot => ObsidianLethePlugin.Settings.VaultPath;
@@ -198,6 +201,9 @@ namespace ObsidianToolset
     internal class ObsidianWriteTools : IToolList
     {
         public string Id => "ObsidianWrite";
+        public string Description => "A set of tools for writing and editing notes in an Obsidian vault.";
+        public string SystemPromptInstruction => string.Empty;
+
         private List<Tool> toolList = [];
 
         private string _vaultRoot => ObsidianLethePlugin.Settings.VaultPath;
