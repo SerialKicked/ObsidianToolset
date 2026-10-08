@@ -14,7 +14,7 @@ namespace ObsidianToolset
     {
         public string Id => "ObsidianRead";
         public string Description => "A set of tools for reading and searching notes in an Obsidian vault. These tools allow the bot to explore the structure of the vault, read note contents, and discover connections between notes.";
-        public string SystemPromptInstruction => "Your `Obsidian` vault contains all your notes and research documents. Use the provided tools to read, search, and explore the vault's contents.";
+        public string SystemPromptInstruction => "You have access to [Obsidian] tools allowing you to read, search, and explore your vault's contents and documents. Be proactive, if the user references something as a `#tag` or mentions activities not mentioned in your prompt, check the vault first.";
 
         private List<Tool> toolList = [];
 
@@ -29,19 +29,19 @@ namespace ObsidianToolset
             {
                 Tool.ClearRegisteredTools();
             }
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(GetVaultTree), "[Obsidian] Returns a recursive outline of folders and notes so you can get oriented in the vault. Use empty string for the whole vault. Prefer this over walking folders one level at a time."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ListAllTags), "[Obsidian] Lists all tags used across the vault with a per-tag note count. Tags come from frontmatter 'tags' and inline #tags."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ListFolders), "[Obsidian] Lists subfolders at a given vault-relative path. Use empty string for root."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ListNotes), "[Obsidian] Lists all notes (.md files) in a vault folder. Use empty string for root."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ReadFrontmatter), "[Obsidian] Reads a note's YAML frontmatter properties (tags, aliases, and other metadata keys). Provide vault-relative path to the .md file."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ReadNoteFull), "[Obsidian] Reads the full content of a note. Provide vault-relative path to the .md file."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ReadNoteSection), "[Obsidian] Reads only the content under a specific heading in a note. Provide vault-relative path to the .md file and the heading text."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ListSectionsInNote), "[Obsidian] Lists all headings (sections) in a note, with their heading level. Use this before ReadNoteSection to discover available section names. Provide vault-relative path to the .md file."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ListNoteBacklinks), "[Obsidian] Use this when you encounter a [[NoteTitle]] link inside a note and want to see which other notes reference the same topic. Essential for exploring connected ideas across the vault. Provide the title (filename without .md)."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(SearchNotesByTag), "[Obsidian] Finds all notes carrying a given tag (frontmatter or inline #tag). Provide the tag with or without a leading '#'."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(SearchNotesByTitle), "[Obsidian] Searches notes by title (filename). Provide a case-insensitive substring to match against note names."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(SearchNotesByContent), "[Obsidian] Searches notes by content, returning file paths and a snippet of matching context. Provide text to search for inside notes."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(FollowLink), "[Obsidian] Use this to read a [[WikiLink]] when you want to retrieve the content of the linked note. Provide the link (without brackets)."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultGetTree), "[Obsidian] Returns a recursive outline of folders and notes so you can get oriented in the vault. Use empty string for the whole vault. Prefer this over walking folders one level at a time."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListTags), "[Obsidian] Lists all tags used across the vault with a per-tag note count. Tags come from frontmatter 'tags' and inline #tags."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListFolders), "[Obsidian] Lists subfolders at a given vault-relative path. Use empty string for root."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListNotes), "[Obsidian] Lists all notes (.md files) in a vault folder. Use empty string for root."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReadFrontmatter), "[Obsidian] Reads a note's YAML frontmatter properties (tags, summary, and other metadata keys). Provide vault-relative path to the .md file."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReadNote), "[Obsidian] Reads the full content of a note. Provide vault-relative path to the .md file."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReadSection), "[Obsidian] Reads only the content under a specific heading in a note. Provide vault-relative path to the .md file and the heading text."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListSections), "[Obsidian] Lists all headings (sections) in a note, with their heading level. Use this before ReadNoteSection to discover available section names. Provide vault-relative path to the .md file."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListBacklinks), "[Obsidian] Use this when you encounter a [[NoteTitle]] link inside a note and want to see which other notes reference the same topic. Essential for exploring connected ideas across the vault. Provide the title (filename without .md)."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultSearchByTag), "[Obsidian] Finds all notes carrying a given tag (frontmatter or inline #tag). Provide the tag with or without a leading '#'."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultSearchByTitle), "[Obsidian] Searches notes by title (filename). Provide a case-insensitive substring to match against note names."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultSearchByContent), "[Obsidian] Searches notes by content, returning file paths and a snippet of matching context. Provide text to search for inside notes."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultFollowLink), "[Obsidian] Use this to retrieve the note attached to a [[WikiLink]]. Provide the link without brackets."));
         }
 
         public void UnloadTools()
@@ -60,7 +60,7 @@ namespace ObsidianToolset
 
         /// <summary>List subfolders at a given vault-relative path.</summary>
         /// <param name="folderPath">Vault-relative folder path, or empty for root.</param>
-        public async Task<string> ListFolders(
+        public async Task<string> VaultListFolders(
             [FunctionParameter("Vault-relative folder path to list subfolders of. Use an empty string for the vault root.")] string folderPath = "")
         {
             await Task.Delay(5).ConfigureAwait(false);
@@ -75,7 +75,7 @@ namespace ObsidianToolset
 
         /// <summary>List all notes (.md files) in a vault folder.</summary>
         /// <param name="folderPath">Vault-relative folder path, or empty for root.</param>
-        public async Task<string> ListNotes(
+        public async Task<string> VaultListNotes(
             [FunctionParameter("Vault-relative folder path to list notes (.md files) in. Use an empty string for the vault root.")] string folderPath = "")
         {
             await Task.Delay(5).ConfigureAwait(false);
@@ -89,7 +89,7 @@ namespace ObsidianToolset
 
         /// <summary>Read the full content of a note.</summary>
         /// <param name="notePath">Vault-relative path to the .md file.</param>
-        public async Task<string> ReadNoteFull(
+        public async Task<string> VaultReadNote(
             [FunctionParameter("Vault-relative path to the .md file to read, e.g. 'Folder/My Note.md'.")] string notePath)
         {
             await Task.Delay(5).ConfigureAwait(false);
@@ -101,11 +101,11 @@ namespace ObsidianToolset
         /// <summary>Read only the content under a specific heading in a note.</summary>
         /// <param name="notePath">Vault-relative path to the .md file.</param>
         /// <param name="heading">The heading text to look for (without # symbols).</param>
-        public async Task<string> ReadNoteSection(
+        public async Task<string> VaultReadSection(
             [FunctionParameter("Vault-relative path to the .md file.")] string notePath,
             [FunctionParameter("The heading text of the section to read, without the leading # symbols. Use ListNoteSections first to discover exact heading names.")] string heading)
         {
-            var content = await ReadNoteFull(notePath);
+            var content = await VaultReadNote(notePath);
             if (content.StartsWith("Note not found")) 
                 return content;
 
@@ -138,10 +138,10 @@ namespace ObsidianToolset
 
         /// <summary>List all headings (sections) in a note.</summary>
         /// <param name="notePath">Vault-relative path to the .md file.</param>
-        public async Task<string> ListSectionsInNote(
+        public async Task<string> VaultListSections(
             [FunctionParameter("Vault-relative path to the .md file whose headings should be listed.")] string notePath)
         {
-            var content = await ReadNoteFull(notePath);
+            var content = await VaultReadNote(notePath);
             if (content.StartsWith("Note not found"))
                 return content;
 
@@ -159,7 +159,7 @@ namespace ObsidianToolset
 
         /// <summary>Search notes by title (filename).</summary>
         /// <param name="query">Case-insensitive substring to match against note names.</param>
-        public async Task<string> SearchNotesByTitle(
+        public async Task<string> VaultSearchByTitle(
             [FunctionParameter("Case-insensitive substring to match against note titles (filenames without .md).")] string query)
         {
             await Task.Delay(5).ConfigureAwait(false);
@@ -172,7 +172,7 @@ namespace ObsidianToolset
 
         /// <summary>Search notes by content, returning file paths and a snippet of matching context.</summary>
         /// <param name="query">Text to search for inside notes.</param>
-        public async Task<string> SearchNotesByContent(
+        public async Task<string> VaultSearchByContent(
             [FunctionParameter("Case-insensitive text to search for inside note contents.")] string query)
         {
             await Task.Delay(5).ConfigureAwait(false);
@@ -191,7 +191,7 @@ namespace ObsidianToolset
 
         /// <summary>Find all notes that link to a given note via [[WikiLinks]].</summary>
         /// <param name="noteTitle">The title (filename without .md) or vault-relative path of the note to find backlinks for.</param>
-        public async Task<string> ListNoteBacklinks(
+        public async Task<string> VaultListBacklinks(
             [FunctionParameter("The note to find backlinks for: either its title (filename without .md) or its vault-relative path.")] string noteTitle)
         {
             await Task.Delay(5).ConfigureAwait(false);
@@ -217,7 +217,7 @@ namespace ObsidianToolset
 
         /// <summary>Go to a [[WikiLink]] and read the linked note. Accepts bare titles or Folder/Path forms, with optional #heading or |caption.</summary>
         /// <param name="WikiLink">The link target (without the surrounding [[ ]]).</param>
-        public async Task<string> FollowLink(
+        public async Task<string> VaultFollowLink(
             [FunctionParameter("The wiki-link target without the surrounding brackets. Accepts a bare title, a 'Folder/Path' form, or an alias, and tolerates trailing #heading or |caption.")] string WikiLink)
         {
             await Task.Delay(5).ConfigureAwait(false);
@@ -226,13 +226,13 @@ namespace ObsidianToolset
             {
                 return $"Linked note '{WikiLink}' not found.";
             }
-            return await ReadNoteFull(Path.GetRelativePath(_vaultRoot, match));
+            return await VaultReadNote(Path.GetRelativePath(_vaultRoot, match));
         }
 
         /// <summary>Get a recursive outline of the vault's folder and note structure.</summary>
         /// <param name="folderPath">Vault-relative folder to start from, or empty for the whole vault.</param>
         /// <param name="maxDepth">Maximum folder depth to descend (default 5). Use a small number for a high-level overview.</param>
-        public async Task<string> GetVaultTree(
+        public async Task<string> VaultGetTree(
             [FunctionParameter("Vault-relative folder to start the outline from. Use an empty string for the whole vault.")] string folderPath = "",
             [FunctionParameter("Maximum folder depth to descend. Defaults to 5; use a small number for a high-level overview.")] int maxDepth = 5)
         {
@@ -263,10 +263,10 @@ namespace ObsidianToolset
 
         /// <summary>Read a note's YAML frontmatter properties (tags, aliases, and any other keys).</summary>
         /// <param name="notePath">Vault-relative path to the .md file.</param>
-        public async Task<string> ReadFrontmatter(
+        public async Task<string> VaultReadFrontmatter(
             [FunctionParameter("Vault-relative path to the .md file whose YAML frontmatter should be read.")] string notePath)
         {
-            var content = await ReadNoteFull(notePath);
+            var content = await VaultReadNote(notePath);
             if (content.StartsWith("Note not found"))
                 return content;
             var (fm, _) = ObsidianMetadata.SplitFrontmatter(content);
@@ -276,7 +276,7 @@ namespace ObsidianToolset
         }
 
         /// <summary>List all tags used across the vault, with how many notes use each.</summary>
-        public async Task<string> ListAllTags()
+        public async Task<string> VaultListTags()
         {
             await Task.Delay(5).ConfigureAwait(false);
             var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -294,7 +294,7 @@ namespace ObsidianToolset
 
         /// <summary>Find all notes carrying a given tag (frontmatter tags or inline #tags).</summary>
         /// <param name="tag">The tag to search for, with or without a leading '#'.</param>
-        public async Task<string> SearchNotesByTag(
+        public async Task<string> VaultSearchByTag(
             [FunctionParameter("The tag to search for, with or without a leading '#'. Matches both frontmatter tags and inline #tags.")] string tag)
         {
             await Task.Delay(5).ConfigureAwait(false);
@@ -314,7 +314,7 @@ namespace ObsidianToolset
     internal class ObsidianWriteTools : IToolList
     {
         public string Id => "ObsidianWrite";
-        public string Description => "A set of tools for writing and editing notes in an Obsidian vault.";
+        public string Description => "A set of [Obsidian] tools for writing and editing notes in your Obsidian vault.";
         public string SystemPromptInstruction => string.Empty;
 
         private List<Tool> toolList = [];
@@ -330,12 +330,12 @@ namespace ObsidianToolset
             {
                 Tool.ClearRegisteredTools();
             }
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(AppendToNote), "Obsidian: Appends text to the end of an existing note. Provide vault-relative path to the .md file and the content to append."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(WriteNote), "Obsidian: Creates a note or overwrites an existing note with the full content provided. Creates parent folders if needed. Provide vault-relative path to the .md file and the full content. WARNING: this replaces the entire document."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ReplaceString), "Obsidian: Replaces occurrences of a literal string with another string inside a note. Provide vault-relative path to the .md file, the text to find, and the replacement text. Use ListNoteSections/ReadNoteSection or ReadNoteFull first to know the exact text."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(ReplaceSection), "Obsidian: Replaces the content under a specific heading in a note, keeping the heading line. Use ListNoteSections first to discover available section names. Provide vault-relative path to the .md file, the heading text (without # symbols), and the new content for that section."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(DeleteNote), "Obsidian: Permanently deletes a note from the vault. Provide vault-relative path to the .md file."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(RenameNote), "Obsidian: Renames or moves a note and automatically updates [[WikiLinks]] in all other notes to point to the new title. Provide the current vault-relative path and the new vault-relative path (both .md)."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultAppendToNote), "[Obsidian] Appends text to the end of an existing note. Provide vault-relative path to the .md file and the content to append."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultWriteNote), "[Obsidian] Creates a note or overwrites an existing note with the full content provided. Creates parent folders if needed. Provide vault-relative path to the .md file and the full content. WARNING: this replaces the entire document."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReplaceString), "[Obsidian] Replaces occurrences of a literal string with another string inside a note. Provide vault-relative path to the .md file, the text to find, and the replacement text. Use ListNoteSections/ReadNoteSection or ReadNoteFull first to know the exact text."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReplaceSection), "[Obsidian] Replaces the content under a specific heading in a note, keeping the heading line. Use ListNoteSections first to discover available section names. Provide vault-relative path to the .md file, the heading text (without # symbols), and the new content for that section."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultDeleteNote), "[Obsidian] Permanently deletes a note from the vault. Provide vault-relative path to the .md file."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultRenameNote), "[Obsidian] Renames or moves a note and automatically updates [[WikiLinks]] in all other notes to point to the new title. Provide the current vault-relative path and the new vault-relative path (both .md)."));
         }
 
         public void UnloadTools()
@@ -355,7 +355,7 @@ namespace ObsidianToolset
         /// <summary>Append text to the end of an existing note.</summary>
         /// <param name="notePath">Vault-relative path to the .md file.</param>
         /// <param name="content">Content to append.</param>
-        public async Task<string> AppendToNote(
+        public async Task<string> VaultAppendToNote(
             [FunctionParameter("Vault-relative path to the existing .md file to append to.")] string notePath,
             [FunctionParameter("The text to append to the end of the note.")] string content)
         {
@@ -370,7 +370,7 @@ namespace ObsidianToolset
         /// <summary>Create a note or overwrite an existing note with the full content provided.</summary>
         /// <param name="notePath">Vault-relative path to the .md file.</param>
         /// <param name="content">Full content to write to the note. This replaces the entire document.</param>
-        public async Task<string> WriteNote(
+        public async Task<string> VaultWriteNote(
             [FunctionParameter("Vault-relative path to the .md file. Parent folders are created if missing.")] string notePath,
             [FunctionParameter("The full content of the note. WARNING: this replaces the entire document if it already exists.")] string content)
         {
@@ -390,7 +390,7 @@ namespace ObsidianToolset
         /// <param name="notePath">Vault-relative path to the .md file.</param>
         /// <param name="find">The literal text to find.</param>
         /// <param name="replace">The text to replace it with.</param>
-        public async Task<string> ReplaceString(
+        public async Task<string> VaultReplaceString(
             [FunctionParameter("Vault-relative path to the .md file to edit.")] string notePath,
             [FunctionParameter("The exact literal text to find (not a regular expression). Every occurrence is replaced.")] string find,
             [FunctionParameter("The text to substitute in place of each occurrence of 'find'.")] string replace)
@@ -398,7 +398,7 @@ namespace ObsidianToolset
             await Task.Delay(5).ConfigureAwait(false);
             var full = Path.Combine(_vaultRoot, notePath);
             if (!File.Exists(full))
-                return "Note not found.";
+                return $"Note not found: '{notePath}'.";
             if (string.IsNullOrEmpty(find))
                 return "The text to find must not be empty.";
             var content = File.ReadAllText(full);
@@ -414,7 +414,7 @@ namespace ObsidianToolset
         /// <param name="notePath">Vault-relative path to the .md file.</param>
         /// <param name="heading">The heading text to look for (without # symbols).</param>
         /// <param name="content">The new content to place under the heading.</param>
-        public async Task<string> ReplaceSection(
+        public async Task<string> VaultReplaceSection(
             [FunctionParameter("Vault-relative path to the .md file to edit.")] string notePath,
             [FunctionParameter("The heading text of the section to replace, without the leading # symbols. Use ListNoteSections first to find exact heading names.")] string heading,
             [FunctionParameter("The new content to place under the heading. The heading line itself is kept; the old body (including any subsections) is replaced.")] string content)
@@ -422,7 +422,7 @@ namespace ObsidianToolset
             await Task.Delay(5).ConfigureAwait(false);
             var full = Path.Combine(_vaultRoot, notePath);
             if (!File.Exists(full))
-                return "Note not found.";
+                return $"Note not found: '{notePath}'.";
 
             var lines = File.ReadAllText(full).Split('\n');
             var sb = new StringBuilder();
@@ -467,13 +467,13 @@ namespace ObsidianToolset
 
         /// <summary>Delete a note from the vault.</summary>
         /// <param name="notePath">Vault-relative path to the .md file.</param>
-        public async Task<string> DeleteNote(
+        public async Task<string> VaultDeleteNote(
             [FunctionParameter("Vault-relative path to the .md file to permanently delete.")] string notePath)
         {
             await Task.Delay(5).ConfigureAwait(false);
             var full = Path.Combine(_vaultRoot, notePath);
             if (!File.Exists(full))
-                return "Note not found.";
+                return $"Note not found: '{notePath}'.";
             File.Delete(full);
             return $"Note '{notePath}' deleted.";
         }
@@ -481,7 +481,7 @@ namespace ObsidianToolset
         /// <summary>Rename (or move) a note and update [[WikiLinks]] in all other notes to point to the new title.</summary>
         /// <param name="notePath">Vault-relative path to the existing .md file.</param>
         /// <param name="newNotePath">New vault-relative path for the .md file. Folders are created if needed.</param>
-        public async Task<string> RenameNote(
+        public async Task<string> VaultRenameNote(
             [FunctionParameter("Vault-relative path to the existing .md file to rename or move.")] string notePath,
             [FunctionParameter("The new vault-relative path for the .md file. Parent folders are created if needed; wiki-links in other notes are updated automatically.")] string newNotePath)
         {
