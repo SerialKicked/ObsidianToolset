@@ -19,4 +19,8 @@ A **plugin DLL**, not a standalone app. It's an Obsidian-vault toolset for [Leth
 
 ## Conventions
 - Every tool method starts with `await Task.Delay(5)` before sync file IO (keeps the async signature; don't remove).
+- **Paths**: always go through `VaultIO` (`ResolveNote` / `ResolveNewNote` / `ResolveFolder`) instead of `Path.Combine(_vaultRoot, ...)`; return paths via `VaultIO.ToRel` (vault-relative, forward slashes). Enumerate notes with `VaultIO.EnumerateNotes` (skips dot-folders).
+- **Line endings**: the LLM only ever sees/sends LF. Read with `VaultIO.ReadText` + `ToLf`, match/edit on LF text, then write back with `ApplyEol(text, DetectEol(original))` and the original BOM flag. Never `AppendLine`/`Split('\n')` raw file text (that is what produced `\r\r\n` before).
+- **Headings/sections**: use `MarkdownSections` (ignores frontmatter and fenced code); don't re-implement heading regexes in tools.
+- Tool descriptions/`FunctionParameter` text must name real tools (e.g. `VaultListSections`, not the old `ListNoteSections`).
 - Follow existing terse `string` return contract: return human-readable status/errors (e.g. `"Note not found."`), never throw for expected misses.

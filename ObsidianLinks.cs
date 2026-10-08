@@ -61,21 +61,23 @@ namespace ObsidianToolset
 
             if (IsPathForm(target))
             {
-                var candidate = Path.Combine(vaultRoot, target.Replace('/', Path.DirectorySeparatorChar) + ".md");
-                if (File.Exists(candidate))
+                var candidate = VaultIO.ResolveNote(vaultRoot, target);
+                if (candidate is not null)
                     return candidate;
                 // Fall back to matching just the final title component.
-                target = target[(target.LastIndexOf('/') + 1)..];
+                target = target[(target.LastIndexOf('/') + 1)..].Trim();
+                if (target.Length == 0) return null;
             }
 
+            var notes = VaultIO.EnumerateNotes(vaultRoot);
             // First pass: exact filename match (cheap, no file reads).
-            foreach (var file in Directory.EnumerateFiles(vaultRoot, "*.md", SearchOption.AllDirectories))
+            foreach (var file in notes)
             {
                 if (Path.GetFileNameWithoutExtension(file).Equals(target, StringComparison.OrdinalIgnoreCase))
                     return file;
             }
             // Second pass: match a frontmatter alias.
-            foreach (var file in Directory.EnumerateFiles(vaultRoot, "*.md", SearchOption.AllDirectories))
+            foreach (var file in notes)
             {
                 if (ObsidianMetadata.GetAliases(File.ReadAllText(file))
                         .Any(a => a.Equals(target, StringComparison.OrdinalIgnoreCase)))
