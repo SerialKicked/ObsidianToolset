@@ -93,6 +93,64 @@ namespace ObsidianToolset
             return null;
         }
 
+        /// <summary>
+        /// Resolve an existing non-note file (attachment) by vault-relative or in-vault absolute path.
+        /// Null if missing, outside the vault, or hidden.
+        /// </summary>
+        public static string? ResolveFile(string root, string? rel)
+        {
+            if (string.IsNullOrWhiteSpace(CleanArg(rel)))
+                return null;
+            var full = ResolveFull(root, rel);
+            if (full is null || !File.Exists(full) || IsHidden(root, full))
+                return null;
+            return full;
+        }
+
+        /// <summary>
+        /// Find a file anywhere in the vault by its file name (Obsidian's "shortest path" link form),
+        /// skipping dot-folders. When several files share the name, the one closest to
+        /// <paramref name="preferDir"/> (same folder first) wins; otherwise the first in stable order.
+        /// </summary>
+        public static string? FindFileByName(string root, string fileName, string? preferDir = null)
+        {
+            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root) || string.IsNullOrWhiteSpace(fileName))
+                return null;
+            var matches = new List<string>();
+            WalkForFile(root, fileName, matches);
+            if (matches.Count == 0)
+                return null;
+            if (preferDir is not null)
+            {
+                var near = matches.FirstOrDefault(m =>
+                    Path.GetDirectoryName(m)?.Equals(preferDir, StringComparison.OrdinalIgnoreCase) == true);
+                if (near is not null)
+                    return near;
+            }
+            return matches[0];
+        }
+
+        private static void WalkForFile(string dir, string fileName, List<string> result)
+        {
+            try
+            {
+                var file = Path.Combine(dir, fileName);
+                if (File.Exists(file))
+                    result.Add(file);
+
+                var subs = Directory.GetDirectories(dir);
+                Array.Sort(subs, StringComparer.OrdinalIgnoreCase);
+                foreach (var sub in subs)
+                {
+                    if (Path.GetFileName(sub).StartsWith('.')) continue;
+                    WalkForFile(sub, fileName, result);
+                }
+            }
+            catch (UnauthorizedAccessException) { }
+            catch (IOException) { }
+            catch (ArgumentException) { } // invalid characters in the requested file name
+        }
+
         /// <summary>Resolve the path for a note that may not exist yet. Always ends in '.md'. Null if invalid.</summary>
         public static string? ResolveNewNote(string root, string? rel)
         {

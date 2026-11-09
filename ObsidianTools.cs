@@ -1,5 +1,6 @@
 ﻿using HNSW.Net;
 using LetheAISharp.Agent.Tools;
+using LetheAISharp.LLM;
 using OpenAI;
 using System;
 using System.Collections;
@@ -18,6 +19,9 @@ namespace ObsidianToolset
 
         private List<Tool> toolList = [];
 
+        /// <summary>Maximum number of linked images attached to a VaultReadNote result.</summary>
+        private const int MaxNoteImages = 5;
+
         private string _vaultRoot => ObsidianLethePlugin.Settings.VaultPath;
 
         public IReadOnlyList<Tool> GetToolList() => toolList;
@@ -34,7 +38,7 @@ namespace ObsidianToolset
             toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListFolders), "[Obsidian] Lists subfolders at a given vault-relative path. Use empty string for root."));
             toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListNotes), "[Obsidian] Lists all notes (.md files) in a vault folder. Use empty string for root."));
             toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReadFrontmatter), "[Obsidian] Reads a note's YAML frontmatter properties (tags, summary, and other metadata keys). Provide vault-relative path to the .md file."));
-            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReadNote), "[Obsidian] Reads the full content of a note. Provide vault-relative path to the .md file."));
+            toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReadNote), "[Obsidian] Reads the full content of a note. Provide vault-relative path to the .md file. If a vision-capable model is loaded, the first images embedded in the note are attached too."));
             toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultReadSection), "[Obsidian] Reads only the content under a specific heading in a note. Provide vault-relative path to the .md file and the heading text."));
             toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListSections), "[Obsidian] Lists all headings (sections) in a note, with their heading level. Use this before VaultReadSection to discover available section names. Provide vault-relative path to the .md file."));
             toolList.Add(Tool.GetOrCreateTool(this, nameof(VaultListBacklinks), "[Obsidian] Use this when you encounter a [[NoteTitle]] link inside a note and want to see which other notes reference the same topic. Essential for exploring connected ideas across the vault. Provide the title (filename without .md)."));
@@ -108,8 +112,25 @@ namespace ObsidianToolset
             [FunctionParameter("Vault-relative path to the .md file to read, e.g. 'Folder/My Note.md'.")] string notePath)
         {
             await Task.Delay(5).ConfigureAwait(false);
-            var (text, _, error) = ReadNoteLf(notePath);
-            return error ?? text!;
+            var (text, rel, error) = ReadNoteLf(notePath);
+            if (error is not null)
+                return error;
+
+            // Images are only useful (and worth the encoding cost) if the model can see them.
+            if (!LLMEngine.SupportsVision)
+                return text!;
+
+            var full = VaultIO.ResolveNote(_vaultRoot, notePath);
+            if (full is null)
+                return text!;
+
+            var images = ObsidianImages.Resolve(_vaultRoot, full, text!, MaxNoteImages);
+            if (images.Count == 0)
+                return text!;
+
+            var result = new StringBuilder(text!);
+            result.Append("\n\n[").Append(images.Count).Append(" image(s) linked in this note are attached.]");
+            return ToolMediaResult.BuildResult(result.ToString(), "Obsidian", "obsidian", [.. images]);
         }
 
         /// <summary>Read only the content under a specific heading in a note.</summary>
